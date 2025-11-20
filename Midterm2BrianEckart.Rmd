@@ -9,6 +9,8 @@ output: html_document
 ```{r}
 library(tidyverse)
 library(readr)
+library(ggthemes1
+        )
 library(maps)
 library(patchwork)
 library(stringr)
@@ -135,23 +137,47 @@ dairy_dashboard <- (prod_map_plot + cons_map_plot) /
 
 dairy_dashboard
 ```
-##Problem 2
 ```{r}
-##LOVER
-lover_files <- list.files(
-  "Taylor_Swift_Genius/Taylor-Swift_Lover",
-  full.names = TRUE
+library(ggwordcloud)
+library(stringr)
+library(tidytext)
+library(tidyverse)
+
+### Lover ---------------------------------------------------------------
+
+### Lover ---------------------------------------------------------------
+
+files_lover <- c(
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Lover/Afterglow.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Lover/Cornelia-Street.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Lover/Cruel-Summer.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Lover/Daylight.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Lover/Death-by-a-Thousand-Cuts.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Lover/False-God.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Lover/I-Forgot-That-You-Existed.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Lover/I-Think-He-Knows.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Lover/It's-Nice-to-Have-a-Friend.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Lover/London-Boy.txt"
 )
 
-lover_song_names <- basename(lover_files) %>%
-  str_replace("\\.txt$", "") %>%
-  str_replace_all("-", " ")
+songs_lover <- c(
+  "Afterglow",
+  "Cornelia Street",
+  "Cruel Summer",
+  "Daylight",
+  "Death by a Thousand Cuts",
+  "False God",
+  "I Forgot That You Existed",
+  "I Think He Knows",
+  "It's Nice to Have a Friend",
+  "London Boy"
+)
 
-lover_song_df <- data.frame()
+lover_song_df <- data_frame()
 number_lover <- 1
 
-for (x in lover_files) {
-  song_text <- readLines(x)
+for (x in files_lover) {
+  song_text <- readLines(x, warn = FALSE)
   
   song_junk <- which(
     str_detect(song_text, fixed("tickets as low")) |
@@ -160,38 +186,51 @@ for (x in lover_files) {
       str_detect(song_text, fixed("translation"))
   )
   
-  if (length(song_junk) > 0) {
-    song_text <- song_text[-song_junk]
-  }
+  x_df <- data.frame(lyrics = song_text[-song_junk])
+  x_df <- x_df %>%
+    mutate(song = songs_lover[number_lover])
   
-  temp <- data.frame(lyrics = song_text) %>%
-    mutate(track_name = lover_song_names[number_lover])
-  
-  lover_song_df <- rbind(lover_song_df, temp)
+  lover_song_df <- rbind(lover_song_df, x_df)
   number_lover <- number_lover + 1
 }
 
-lover_words <- lover_song_df %>%
-  mutate(album_name = "Lover") %>%
+lover_lyric_df <- lover_song_df %>%
+  mutate(album = "Lover") %>%
   unnest_tokens(word, lyrics)
-```
 
-```{r}
-## MIDNIGHTS
-mid_files <- list.files(
-  "Taylor_Swift_Genius/Taylor-Swift_Midnights",
-  full.names = TRUE
+
+## 2. MIDNIGHTS LYRICS -----------------------------------------------------
+
+# Note: Question...? removed because the raw URL is unstable
+files_midnights <- c(
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Midnights/Anti-Hero.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Midnights/Bejeweled.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Midnights/Karma.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Midnights/Labyrinth.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Midnights/Lavender-Haze.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Midnights/Maroon.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Midnights/Mastermind.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Midnights/Midnight-Rain.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Midnights/Snow-On-the-Beach.txt"
 )
 
-mid_song_names <- basename(mid_files) %>%
-  str_replace("\\.txt$", "") %>%
-  str_replace_all("-", " ")
+songs_midnights <- c(
+  "Anti-Hero",
+  "Bejeweled",
+  "Karma",
+  "Labyrinth",
+  "Lavender Haze",
+  "Maroon",
+  "Mastermind",
+  "Midnight Rain",
+  "Snow On the Beach"
+)
 
-mid_song_df <- data.frame()
+midnights_song_df <- data_frame()
 number_mid <- 1
 
-for (x in mid_files) {
-  song_text <- readLines(x)
+for (y in files_midnights) {
+  song_text <- readLines(y, warn = FALSE)
   
   song_junk <- which(
     str_detect(song_text, fixed("tickets as low")) |
@@ -200,42 +239,52 @@ for (x in mid_files) {
       str_detect(song_text, fixed("translation"))
   )
   
-  if (length(song_junk) > 0) {
-    song_text <- song_text[-song_junk]
-  }
+  y_df <- data.frame(lyrics = song_text[-song_junk])
+  y_df <- y_df %>%
+    mutate(song = songs_midnights[number_mid])
   
-  temp <- data.frame(lyrics = song_text) %>%
-    mutate(track_name = mid_song_names[number_mid])
-  
-  mid_song_df <- rbind(mid_song_df, temp)
+  midnights_song_df <- rbind(midnights_song_df, y_df)
   number_mid <- number_mid + 1
 }
 
-mid_words <- mid_song_df %>%
-  mutate(album_name = "Midnights") %>%
+midnights_lyric_df <- midnights_song_df %>%
+  mutate(album = "Midnights") %>%
   unnest_tokens(word, lyrics)
-```
-```{r}
+
+
+
+lover_words <- lover_lyric_df %>%
+  rename(
+    track_name = song,
+    album_name = album
+  )
+
+mid_words <- midnights_lyric_df %>%
+  rename(
+    track_name = song,
+    album_name = album
+  )
+
+
+
 ts_words <- bind_rows(lover_words, mid_words)
-head(ts_words)
-```
-```{r}
+
 data("stop_words")
 
 album_words <- ts_words %>%
   anti_join(stop_words, by = "word") %>%
   count(album_name, track_name, word, sort = TRUE)
 
-head(album_words)
-```
-```{r}
+unique(album_words$album_name)   # should show "Lover" and "Midnights"
+
+
 
 lover_wc_words <- album_words %>%
-  filter(album_name == "Lover") %>%
+  filter(str_to_lower(album_name) == "lover") %>%
   slice_max(n, n = 100)
 
 midnights_wc_words <- album_words %>%
-  filter(album_name == "Midnights") %>%
+  filter(str_to_lower(album_name) == "midnights") %>%
   slice_max(n, n = 100)
 
 wc_lover <- ggplot(lover_wc_words, aes(label = word, size = n)) +
@@ -259,9 +308,8 @@ wc_midnights <- ggplot(midnights_wc_words, aes(label = word, size = n)) +
 wc_lover
 wc_midnights
 
-```
 
-```{r}
+
 word_sentiments <- get_sentiments("bing")
 
 album_sentiment <- album_words %>%
@@ -272,9 +320,9 @@ album_sentiment <- album_words %>%
   mutate(prop = total / sum(total))
 
 album_sentiment
-```
-```{r}
-sentiment_plot <- ggplot(album_sentiment, aes(x = album_name, y = prop, fill = sentiment)) +
+
+sentiment_plot <- ggplot(album_sentiment,
+                         aes(x = album_name, y = prop, fill = sentiment)) +
   geom_col(position = "fill") +
   theme_minimal() +
   labs(
@@ -286,9 +334,9 @@ sentiment_plot <- ggplot(album_sentiment, aes(x = album_name, y = prop, fill = s
   )
 
 sentiment_plot
-```
 
-```{r}
+
+
 song_sentiment <- album_words %>%
   inner_join(word_sentiments, by = "word") %>%
   group_by(album_name, track_name, sentiment) %>%
@@ -301,9 +349,15 @@ song_sentiment <- album_words %>%
   mutate(net_sentiment = positive - negative)
 
 song_sentiment
-```
 
-```{r}
+
+
+spotify_csv <- list.files(
+  "Taylor_Swift_Spotify",
+  pattern = "csv$",
+  full.names = TRUE
+)[1]
+
 spotify_csv <- list.files(
   "Taylor_Swift_Spotify",
   pattern = "csv$",
@@ -315,17 +369,19 @@ taylor_spotify <- read_csv(spotify_csv)
 spotify_two <- taylor_spotify %>%
   filter(Album %in% c("Lover", "Midnights")) %>%
   select(Album, `Song Name`, Danceability, Energy, Valence, Tempo) %>%
-  rename(album_name = Album) %>%
-  rename(track_name = `Song Name`) %>%
-  rename(danceability = Danceability) %>%
-  rename(energy = Energy) %>%
-  rename(valence = Valence) %>%
-  rename(tempo = Tempo)
+  rename(
+    album_name   = Album,
+    track_name   = `Song Name`,
+    danceability = Danceability,
+    energy       = Energy,
+    valence      = Valence,
+    tempo        = Tempo
+  )
 
 head(spotify_two)
-```
 
-```{r}
+
+
 song_sentiment2 <- song_sentiment %>%
   mutate(track_join = str_to_lower(track_name))
 
@@ -333,14 +389,18 @@ spotify_two2 <- spotify_two %>%
   mutate(track_join = str_to_lower(track_name))
 
 song_sentiment_spotify <- song_sentiment2 %>%
-  inner_join(spotify_two2,
-             by = c("album_name", "track_join"))
+  inner_join(
+    spotify_two2,
+    by = c("album_name", "track_join")
+  )
 
 glimpse(song_sentiment_spotify)
-```
 
-```{r}
-sent_vs_dance <- ggplot(song_sentiment_spotify, aes(x = danceability, y = net_sentiment, color = album_name)) +
+
+
+sent_vs_dance <- ggplot(song_sentiment_spotify,
+                        aes(x = danceability, y = net_sentiment,
+                            color = album_name)) +
   geom_point(size = 2, alpha = 0.7) +
   theme_minimal() +
   labs(
@@ -351,11 +411,9 @@ sent_vs_dance <- ggplot(song_sentiment_spotify, aes(x = danceability, y = net_se
     color = "Album"
   )
 
-sent_vs_dance
-```
-
-```{r}
-sent_vs_energy <- ggplot(song_sentiment_spotify, aes(x = energy, y = net_sentiment, color = album_name)) +
+sent_vs_energy <- ggplot(song_sentiment_spotify,
+                         aes(x = energy, y = net_sentiment,
+                             color = album_name)) +
   geom_point(size = 2, alpha = 0.7) +
   theme_minimal() +
   labs(
@@ -366,11 +424,9 @@ sent_vs_energy <- ggplot(song_sentiment_spotify, aes(x = energy, y = net_sentime
     color = "Album"
   )
 
-sent_vs_energy
-```
-
-```{r}
-sent_vs_valence <- ggplot(song_sentiment_spotify, aes(x = valence, y = net_sentiment, color = album_name)) +
+sent_vs_valence <- ggplot(song_sentiment_spotify,
+                          aes(x = valence, y = net_sentiment,
+                              color = album_name)) +
   geom_point(size = 2, alpha = 0.7) +
   theme_minimal() +
   labs(
@@ -381,11 +437,9 @@ sent_vs_valence <- ggplot(song_sentiment_spotify, aes(x = valence, y = net_senti
     color = "Album"
   )
 
-sent_vs_valence
-```
-
-```{r}
-sent_vs_tempo <- ggplot(song_sentiment_spotify, aes(x = tempo, y= net_sentiment, color = album_name)) +
+sent_vs_tempo <- ggplot(song_sentiment_spotify,
+                        aes(x = tempo, y = net_sentiment,
+                            color = album_name)) +
   geom_point(size = 2, alpha = 0.7) +
   theme_minimal() +
   labs(
@@ -396,16 +450,19 @@ sent_vs_tempo <- ggplot(song_sentiment_spotify, aes(x = tempo, y= net_sentiment,
     color = "Album"
   )
 
+sent_vs_dance
+sent_vs_energy
+sent_vs_valence
 sent_vs_tempo
-```
 
-```{r, fig.width=12, fig.height=16}
-library(patchwork)
+
+
 ts_dashboard <- (wc_lover + wc_midnights) /
                 sentiment_plot /
                 (sent_vs_dance + sent_vs_energy) /
                 (sent_vs_valence + sent_vs_tempo)
 
 ts_dashboard
+
 ```
 
