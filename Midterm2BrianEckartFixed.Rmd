@@ -1,0 +1,467 @@
+---
+title: "Midterm2"
+author: "Brian Eckart"
+date: "2025-11-17"
+output: html_document
+---
+
+
+```{r}
+library(tidyverse)
+library(readr)
+library(ggthemes1
+        )
+library(maps)
+library(patchwork)
+library(stringr)
+library(tidytext)
+library(ggwordcloud)
+```
+
+```{r}
+milk_prod_raw <- read_csv(
+"https://raw.githubusercontent.com/mahsaashouri/STA309-Dataset/refs/heads/main/Milk-Production-Consumption/milk-production-tonnes.csv"
+)
+
+milk_cons_raw <- read_csv(
+"https://raw.githubusercontent.com/mahsaashouri/STA309-Dataset/refs/heads/main/Milk-Production-Consumption/per-capita-milk-consumption.csv"
+)
+
+glimpse(milk_prod_raw)
+glimpse(milk_cons_raw)
+```
+
+```{r}
+milk_prod <- milk_prod_raw %>%
+  rename(
+    Entity = Entity,
+    Code = Code,
+    Year = Year,
+    MilkProd = `Milk Production (tonnes)`
+  )
+
+milk_cons <- milk_cons_raw %>%
+  rename(
+    Entity = Entity,
+    Code = Code,
+    Year = Year,
+    MilkCons = `Milk consumption (kilograms per year per capita)`
+  )
+
+milk_combined <- milk_prod %>%
+  inner_join(milk_cons, by = c("Entity", "Code", "Year"))
+```
+
+```{r}
+world_map <- map_data("world")
+
+milk_prod_2020 <- milk_prod %>% filter(Year == 2020)
+milk_cons_2020 <- milk_cons %>% filter(Year == 2020)
+```
+
+```{r}
+milk_prod_map <- world_map %>%
+  left_join(milk_prod_2020, by = c("region" = "Entity"))
+
+prod_map_plot <- ggplot(milk_prod_map,
+                        aes(long, lat, group = group, fill = MilkProd)) +
+  geom_polygon(color = "grey30") +
+  coord_map() +
+  theme_map() +
+  theme(legend.position = "bottom") +
+  scale_fill_gradient(low = "white", high = "blue", na.value = "grey90") +
+  labs(title = "Milk Production Around the World (2020)",
+       subtitle = "Total milk production (tonnes)",
+       fill = "Tonnes",
+       caption = "Data: FAO / OWID")
+```
+
+```{r}
+milk_cons_map <- world_map %>%
+  left_join(milk_cons_2020, by = c("region" = "Entity"))
+
+cons_map_plot <- ggplot(milk_cons_map,
+                        aes(long, lat, group = group, fill = MilkCons)) +
+  geom_polygon(color = "grey30") +
+  coord_map() +
+  theme_map() +
+  theme(legend.position = "bottom") +
+  scale_fill_gradient(low = "white", high = "darkgreen", na.value = "grey90") +
+  labs(title = "Milk Consumption Around the World (2020)",
+       subtitle = "Per-capita consumption (kg/year)",
+       fill = "kg/year",
+       caption = "Data: FAO / OWID")
+```
+
+```{r}
+milk_time <- milk_combined %>%
+  group_by(Year) %>%
+  summarize(
+    GlobalProd = sum(MilkProd, na.rm = TRUE),
+    AvgCons = mean(MilkCons, na.rm = TRUE)
+  )
+
+milk_time_long <- milk_time %>%
+  pivot_longer(cols = c(GlobalProd, AvgCons),
+               names_to = "Measure",
+               values_to = "Value")
+
+time_plot <- ggplot(milk_time_long, aes(Year, Value, color = Measure)) +
+  geom_line(size = 1) +
+  theme_minimal() +
+  labs(title = "Global Milk Production and Consumption Over Time",
+       subtitle = "Production (tonnes) vs. average consumption",
+       x = "Year",
+       y = "Value",
+       color = "Measure",
+       caption = "Data: FAO / OWID")
+```
+```{r}
+rel_data_2020 <- milk_combined %>%
+  filter(Year == 2020) %>%
+  drop_na(MilkProd, MilkCons)
+
+rel_plot <- ggplot(rel_data_2020, aes(MilkProd, MilkCons)) +
+  geom_point(alpha = 0.6) +
+  theme_minimal() +
+  labs(title = "Milk Production vs Consumption (2020)",
+       subtitle = "Each point represents a country",
+       x = "Production (tonnes)",
+       y = "Consumption (kg/year)",
+       caption = "Data: FAO / OWID")
+```
+
+```{r, fig.width = 14, fig.height = 10, out.width = "100%"}
+dairy_dashboard <- (prod_map_plot + cons_map_plot) /
+                   (time_plot + rel_plot)
+
+dairy_dashboard
+```
+
+##Milk production is higher in countries like India while consumption is higher in places like Europe. Globally procution has gone up over time but the average consumption hasn't grown as fast. The scatterplot shows that there isnt a strong relationship between how much a country produces and how much its people consume.
+
+
+```{r}
+library(ggwordcloud)
+library(stringr)
+library(tidytext)
+library(tidyverse)
+
+### Lover ---------------------------------------------------------------
+
+### Lover ---------------------------------------------------------------
+
+files_lover <- c(
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Lover/Afterglow.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Lover/Cornelia-Street.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Lover/Cruel-Summer.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Lover/Daylight.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Lover/Death-by-a-Thousand-Cuts.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Lover/False-God.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Lover/I-Forgot-That-You-Existed.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Lover/I-Think-He-Knows.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Lover/It's-Nice-to-Have-a-Friend.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Lover/London-Boy.txt"
+)
+
+songs_lover <- c(
+  "Afterglow",
+  "Cornelia Street",
+  "Cruel Summer",
+  "Daylight",
+  "Death by a Thousand Cuts",
+  "False God",
+  "I Forgot That You Existed",
+  "I Think He Knows",
+  "It's Nice to Have a Friend",
+  "London Boy"
+)
+
+lover_song_df <- data_frame()
+number_lover <- 1
+
+for (x in files_lover) {
+  song_text <- readLines(x, warn = FALSE)
+  
+  song_junk <- which(
+    str_detect(song_text, fixed("tickets as low")) |
+      str_detect(song_text, fixed("Lyrics")) |
+      str_detect(song_text, fixed("embed")) |
+      str_detect(song_text, fixed("translation"))
+  )
+  
+  x_df <- data.frame(lyrics = song_text[-song_junk])
+  x_df <- x_df %>%
+    mutate(song = songs_lover[number_lover])
+  
+  lover_song_df <- rbind(lover_song_df, x_df)
+  number_lover <- number_lover + 1
+}
+
+lover_lyric_df <- lover_song_df %>%
+  mutate(album = "Lover") %>%
+  unnest_tokens(word, lyrics)
+
+
+## 2. MIDNIGHTS LYRICS -----------------------------------------------------
+
+# Note: Question...? removed because the raw URL is unstable
+files_midnights <- c(
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Midnights/Anti-Hero.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Midnights/Bejeweled.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Midnights/Karma.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Midnights/Labyrinth.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Midnights/Lavender-Haze.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Midnights/Maroon.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Midnights/Mastermind.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Midnights/Midnight-Rain.txt",
+  "https://raw.githubusercontent.com/adashofdata/taylor_swift_data/refs/heads/main/Taylor_Swift_Genius/Taylor-Swift_Midnights/Snow-On-the-Beach.txt"
+)
+
+songs_midnights <- c(
+  "Anti-Hero",
+  "Bejeweled",
+  "Karma",
+  "Labyrinth",
+  "Lavender Haze",
+  "Maroon",
+  "Mastermind",
+  "Midnight Rain",
+  "Snow On the Beach"
+)
+
+midnights_song_df <- data_frame()
+number_mid <- 1
+
+for (y in files_midnights) {
+  song_text <- readLines(y, warn = FALSE)
+  
+  song_junk <- which(
+    str_detect(song_text, fixed("tickets as low")) |
+      str_detect(song_text, fixed("Lyrics")) |
+      str_detect(song_text, fixed("embed")) |
+      str_detect(song_text, fixed("translation"))
+  )
+  
+  y_df <- data.frame(lyrics = song_text[-song_junk])
+  y_df <- y_df %>%
+    mutate(song = songs_midnights[number_mid])
+  
+  midnights_song_df <- rbind(midnights_song_df, y_df)
+  number_mid <- number_mid + 1
+}
+
+midnights_lyric_df <- midnights_song_df %>%
+  mutate(album = "Midnights") %>%
+  unnest_tokens(word, lyrics)
+
+
+
+lover_words <- lover_lyric_df %>%
+  rename(
+    track_name = song,
+    album_name = album
+  )
+
+mid_words <- midnights_lyric_df %>%
+  rename(
+    track_name = song,
+    album_name = album
+  )
+
+
+
+ts_words <- bind_rows(lover_words, mid_words)
+
+data("stop_words")
+
+album_words <- ts_words %>%
+  anti_join(stop_words, by = "word") %>%
+  count(album_name, track_name, word, sort = TRUE)
+
+unique(album_words$album_name)   # should show "Lover" and "Midnights"
+
+
+
+lover_wc_words <- album_words %>%
+  filter(str_to_lower(album_name) == "lover") %>%
+  slice_max(n, n = 100)
+
+midnights_wc_words <- album_words %>%
+  filter(str_to_lower(album_name) == "midnights") %>%
+  slice_max(n, n = 100)
+
+wc_lover <- ggplot(lover_wc_words, aes(label = word, size = n)) +
+  geom_text_wordcloud() +
+  scale_size_area(max_size = 15) +
+  theme_minimal() +
+  labs(
+    title = "Lover – Most Common Words",
+    subtitle = "Stop words removed"
+  )
+
+wc_midnights <- ggplot(midnights_wc_words, aes(label = word, size = n)) +
+  geom_text_wordcloud() +
+  scale_size_area(max_size = 15) +
+  theme_minimal() +
+  labs(
+    title = "Midnights – Most Common Words",
+    subtitle = "Stop words removed"
+  )
+
+wc_lover
+wc_midnights
+
+
+
+word_sentiments <- get_sentiments("bing")
+
+album_sentiment <- album_words %>%
+  inner_join(word_sentiments, by = "word") %>%
+  group_by(album_name, sentiment) %>%
+  summarize(total = sum(n), .groups = "drop") %>%
+  group_by(album_name) %>%
+  mutate(prop = total / sum(total))
+
+album_sentiment
+
+sentiment_plot <- ggplot(album_sentiment, aes(x = album_name, y = prop, fill = sentiment)) +
+  geom_col(position = "fill") +
+  theme_minimal() +
+  labs(
+    title = "Sentiment Comparison: Lover vs Midnights",
+    subtitle = "Proportion of positive vs negative words",
+    x = "Album",
+    y = "Proportion",
+    fill = "Sentiment"
+  )
+
+sentiment_plot
+
+
+
+song_sentiment <- album_words %>%
+  inner_join(word_sentiments, by = "word") %>%
+  group_by(album_name, track_name, sentiment) %>%
+  summarize(n = sum(n), .groups = "drop") %>%
+  pivot_wider(
+    names_from  = sentiment,
+    values_from = n,
+    values_fill = 0
+  ) %>%
+  mutate(net_sentiment = positive - negative)
+
+song_sentiment
+
+
+
+spotify_csv <- list.files(
+  "Taylor_Swift_Spotify",
+  pattern = "csv$",
+  full.names = TRUE
+)[1]
+
+spotify_csv <- list.files(
+  "Taylor_Swift_Spotify",
+  pattern = "csv$",
+  full.names = TRUE
+)[1]
+
+
+taylor_spotify <- read_csv("taylor_swift_spotify_data.csv")
+
+spotify_two <- taylor_spotify %>%
+  filter(Album %in% c("Lover", "Midnights")) %>%
+  select(Album, `Song Name`, Danceability, Energy, Valence, Tempo) %>%
+  rename(
+    album_name   = Album,
+    track_name   = `Song Name`,
+    danceability = Danceability,
+    energy       = Energy,
+    valence      = Valence,
+    tempo        = Tempo
+  )
+
+head(spotify_two)
+
+
+
+song_sentiment2 <- song_sentiment %>%
+  mutate(track_join = str_to_lower(track_name))
+
+spotify_two2 <- spotify_two %>%
+  mutate(track_join = str_to_lower(track_name))
+
+song_sentiment_spotify <- song_sentiment2 %>%
+  inner_join(
+    spotify_two2,
+    by = c("album_name", "track_join")
+  )
+
+glimpse(song_sentiment_spotify)
+
+
+
+sent_vs_dance <- ggplot(song_sentiment_spotify, aes(x = danceability, y = net_sentiment, color = album_name)) +
+  geom_point(size = 2, alpha = 0.7) +
+  theme_minimal() +
+  labs(
+    title = "Song Sentiment vs Danceability",
+    subtitle = "Lover vs Midnights",
+    x = "Danceability",
+    y = "Net sentiment (positive - negative)",
+    color = "Album"
+  )
+
+sent_vs_energy <- ggplot(song_sentiment_spotify, aes(x = energy, y = net_sentiment, color = album_name)) +
+  geom_point(size = 2, alpha = 0.7) +
+  theme_minimal() +
+  labs(
+    title = "Song Sentiment vs Energy",
+    subtitle = "Lover vs Midnights",
+    x = "Energy",
+    y = "Net sentiment (positive - negative)",
+    color = "Album"
+  )
+
+sent_vs_valence <- ggplot(song_sentiment_spotify, aes(x = valence, y = net_sentiment, color = album_name)) +
+  geom_point(size = 2, alpha = 0.7) +
+  theme_minimal() +
+  labs(
+    title = "Song Sentiment vs Valence",
+    subtitle = "Valence = musical positivity score",
+    x = "Valence",
+    y = "Net sentiment (positive - negative)",
+    color = "Album"
+  )
+
+sent_vs_tempo <- ggplot(song_sentiment_spotify,
+                        aes(x = tempo, y = net_sentiment,
+                            color = album_name)) +
+  geom_point(size = 2, alpha = 0.7) +
+  theme_minimal() +
+  labs(
+    title = "Song Sentiment vs Tempo",
+    subtitle = "Lover vs Midnights",
+    x = "Tempo (BPM)",
+    y = "Net sentiment (positive - negative)",
+    color = "Album"
+  )
+
+sent_vs_dance
+sent_vs_energy
+sent_vs_valence
+sent_vs_tempo
+```
+
+
+```{r, fig.width = 18, fig.height = 14, out.width = "100%"}
+ts_dashboard <- (wc_lover + wc_midnights) /
+                sentiment_plot /
+                (sent_vs_dance + sent_vs_energy) /
+                (sent_vs_valence + sent_vs_tempo)
+
+ts_dashboard
+
+```
+## The word clouds seem to show that Lover uses brighter words while Midnights uses moodier and emotional words. The Sentiment bars show that both albums have mostly positive words with lover being slighlty more positive overall. The scatterplots dont show a strong connection between a songs musical features and its sentiment. So upbeat songs can still have negative lyrics and slower songs can also be positive. Overall Lover leans more warm and hopeful while Midnight leans more dramatic
