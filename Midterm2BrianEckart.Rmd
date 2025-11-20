@@ -1,0 +1,411 @@
+---
+title: "Midterm2"
+author: "Brian Eckart"
+date: "2025-11-17"
+output: html_document
+---
+
+
+```{r}
+library(tidyverse)
+library(readr)
+library(maps)
+library(patchwork)
+library(stringr)
+library(tidytext)
+library(ggwordcloud)
+```
+
+```{r}
+milk_prod_raw <- read_csv(
+"https://raw.githubusercontent.com/mahsaashouri/STA309-Dataset/refs/heads/main/Milk-Production-Consumption/milk-production-tonnes.csv"
+)
+
+milk_cons_raw <- read_csv(
+"https://raw.githubusercontent.com/mahsaashouri/STA309-Dataset/refs/heads/main/Milk-Production-Consumption/per-capita-milk-consumption.csv"
+)
+
+glimpse(milk_prod_raw)
+glimpse(milk_cons_raw)
+```
+
+```{r}
+milk_prod <- milk_prod_raw %>%
+  rename(
+    Entity = Entity,
+    Code = Code,
+    Year = Year,
+    MilkProd = `Milk Production (tonnes)`
+  )
+
+milk_cons <- milk_cons_raw %>%
+  rename(
+    Entity = Entity,
+    Code = Code,
+    Year = Year,
+    MilkCons = `Milk consumption (kilograms per year per capita)`
+  )
+
+milk_combined <- milk_prod %>%
+  inner_join(milk_cons, by = c("Entity", "Code", "Year"))
+```
+
+```{r}
+world_map <- map_data("world")
+
+milk_prod_2020 <- milk_prod %>% filter(Year == 2020)
+milk_cons_2020 <- milk_cons %>% filter(Year == 2020)
+```
+
+```{r}
+milk_prod_map <- world_map %>%
+  left_join(milk_prod_2020, by = c("region" = "Entity"))
+
+prod_map_plot <- ggplot(milk_prod_map,
+                        aes(long, lat, group = group, fill = MilkProd)) +
+  geom_polygon(color = "grey30") +
+  coord_map() +
+  theme_map() +
+  theme(legend.position = "bottom") +
+  scale_fill_gradient(low = "white", high = "blue", na.value = "grey90") +
+  labs(title = "Milk Production Around the World (2020)",
+       subtitle = "Total milk production (tonnes)",
+       fill = "Tonnes",
+       caption = "Data: FAO / OWID")
+```
+
+```{r}
+milk_cons_map <- world_map %>%
+  left_join(milk_cons_2020, by = c("region" = "Entity"))
+
+cons_map_plot <- ggplot(milk_cons_map,
+                        aes(long, lat, group = group, fill = MilkCons)) +
+  geom_polygon(color = "grey30") +
+  coord_map() +
+  theme_map() +
+  theme(legend.position = "bottom") +
+  scale_fill_gradient(low = "white", high = "darkgreen", na.value = "grey90") +
+  labs(title = "Milk Consumption Around the World (2020)",
+       subtitle = "Per-capita consumption (kg/year)",
+       fill = "kg/year",
+       caption = "Data: FAO / OWID")
+```
+
+```{r}
+milk_time <- milk_combined %>%
+  group_by(Year) %>%
+  summarize(
+    GlobalProd = sum(MilkProd, na.rm = TRUE),
+    AvgCons = mean(MilkCons, na.rm = TRUE)
+  )
+
+milk_time_long <- milk_time %>%
+  pivot_longer(cols = c(GlobalProd, AvgCons),
+               names_to = "Measure",
+               values_to = "Value")
+
+time_plot <- ggplot(milk_time_long, aes(Year, Value, color = Measure)) +
+  geom_line(size = 1) +
+  theme_minimal() +
+  labs(title = "Global Milk Production and Consumption Over Time",
+       subtitle = "Production (tonnes) vs. average consumption",
+       x = "Year",
+       y = "Value",
+       color = "Measure",
+       caption = "Data: FAO / OWID")
+```
+```{r}
+rel_data_2020 <- milk_combined %>%
+  filter(Year == 2020) %>%
+  drop_na(MilkProd, MilkCons)
+
+rel_plot <- ggplot(rel_data_2020, aes(MilkProd, MilkCons)) +
+  geom_point(alpha = 0.6) +
+  theme_minimal() +
+  labs(title = "Milk Production vs Consumption (2020)",
+       subtitle = "Each point represents a country",
+       x = "Production (tonnes)",
+       y = "Consumption (kg/year)",
+       caption = "Data: FAO / OWID")
+```
+
+```{r}
+dairy_dashboard <- (prod_map_plot + cons_map_plot) /
+                   (time_plot + rel_plot)
+
+dairy_dashboard
+```
+##Problem 2
+```{r}
+##LOVER
+lover_files <- list.files(
+  "Taylor_Swift_Genius/Taylor-Swift_Lover",
+  full.names = TRUE
+)
+
+lover_song_names <- basename(lover_files) %>%
+  str_replace("\\.txt$", "") %>%
+  str_replace_all("-", " ")
+
+lover_song_df <- data.frame()
+number_lover <- 1
+
+for (x in lover_files) {
+  song_text <- readLines(x)
+  
+  song_junk <- which(
+    str_detect(song_text, fixed("tickets as low")) |
+      str_detect(song_text, fixed("Lyrics")) |
+      str_detect(song_text, fixed("embed")) |
+      str_detect(song_text, fixed("translation"))
+  )
+  
+  if (length(song_junk) > 0) {
+    song_text <- song_text[-song_junk]
+  }
+  
+  temp <- data.frame(lyrics = song_text) %>%
+    mutate(track_name = lover_song_names[number_lover])
+  
+  lover_song_df <- rbind(lover_song_df, temp)
+  number_lover <- number_lover + 1
+}
+
+lover_words <- lover_song_df %>%
+  mutate(album_name = "Lover") %>%
+  unnest_tokens(word, lyrics)
+```
+
+```{r}
+## MIDNIGHTS
+mid_files <- list.files(
+  "Taylor_Swift_Genius/Taylor-Swift_Midnights",
+  full.names = TRUE
+)
+
+mid_song_names <- basename(mid_files) %>%
+  str_replace("\\.txt$", "") %>%
+  str_replace_all("-", " ")
+
+mid_song_df <- data.frame()
+number_mid <- 1
+
+for (x in mid_files) {
+  song_text <- readLines(x)
+  
+  song_junk <- which(
+    str_detect(song_text, fixed("tickets as low")) |
+      str_detect(song_text, fixed("Lyrics")) |
+      str_detect(song_text, fixed("embed")) |
+      str_detect(song_text, fixed("translation"))
+  )
+  
+  if (length(song_junk) > 0) {
+    song_text <- song_text[-song_junk]
+  }
+  
+  temp <- data.frame(lyrics = song_text) %>%
+    mutate(track_name = mid_song_names[number_mid])
+  
+  mid_song_df <- rbind(mid_song_df, temp)
+  number_mid <- number_mid + 1
+}
+
+mid_words <- mid_song_df %>%
+  mutate(album_name = "Midnights") %>%
+  unnest_tokens(word, lyrics)
+```
+```{r}
+ts_words <- bind_rows(lover_words, mid_words)
+head(ts_words)
+```
+```{r}
+data("stop_words")
+
+album_words <- ts_words %>%
+  anti_join(stop_words, by = "word") %>%
+  count(album_name, track_name, word, sort = TRUE)
+
+head(album_words)
+```
+```{r}
+
+lover_wc_words <- album_words %>%
+  filter(album_name == "Lover") %>%
+  slice_max(n, n = 100)
+
+midnights_wc_words <- album_words %>%
+  filter(album_name == "Midnights") %>%
+  slice_max(n, n = 100)
+
+wc_lover <- ggplot(lover_wc_words, aes(label = word, size = n)) +
+  geom_text_wordcloud() +
+  scale_size_area(max_size = 15) +
+  theme_minimal() +
+  labs(
+    title = "Lover – Most Common Words",
+    subtitle = "Stop words removed"
+  )
+
+wc_midnights <- ggplot(midnights_wc_words, aes(label = word, size = n)) +
+  geom_text_wordcloud() +
+  scale_size_area(max_size = 15) +
+  theme_minimal() +
+  labs(
+    title = "Midnights – Most Common Words",
+    subtitle = "Stop words removed"
+  )
+
+wc_lover
+wc_midnights
+
+```
+
+```{r}
+word_sentiments <- get_sentiments("bing")
+
+album_sentiment <- album_words %>%
+  inner_join(word_sentiments, by = "word") %>%
+  group_by(album_name, sentiment) %>%
+  summarize(total = sum(n), .groups = "drop") %>%
+  group_by(album_name) %>%
+  mutate(prop = total / sum(total))
+
+album_sentiment
+```
+```{r}
+sentiment_plot <- ggplot(album_sentiment, aes(x = album_name, y = prop, fill = sentiment)) +
+  geom_col(position = "fill") +
+  theme_minimal() +
+  labs(
+    title = "Sentiment Comparison: Lover vs Midnights",
+    subtitle = "Proportion of positive vs negative words",
+    x = "Album",
+    y = "Proportion",
+    fill = "Sentiment"
+  )
+
+sentiment_plot
+```
+
+```{r}
+song_sentiment <- album_words %>%
+  inner_join(word_sentiments, by = "word") %>%
+  group_by(album_name, track_name, sentiment) %>%
+  summarize(n = sum(n), .groups = "drop") %>%
+  pivot_wider(
+    names_from  = sentiment,
+    values_from = n,
+    values_fill = 0
+  ) %>%
+  mutate(net_sentiment = positive - negative)
+
+song_sentiment
+```
+
+```{r}
+spotify_csv <- list.files(
+  "Taylor_Swift_Spotify",
+  pattern = "csv$",
+  full.names = TRUE
+)[1]
+
+taylor_spotify <- read_csv(spotify_csv)
+
+spotify_two <- taylor_spotify %>%
+  filter(Album %in% c("Lover", "Midnights")) %>%
+  select(Album, `Song Name`, Danceability, Energy, Valence, Tempo) %>%
+  rename(album_name = Album) %>%
+  rename(track_name = `Song Name`) %>%
+  rename(danceability = Danceability) %>%
+  rename(energy = Energy) %>%
+  rename(valence = Valence) %>%
+  rename(tempo = Tempo)
+
+head(spotify_two)
+```
+
+```{r}
+song_sentiment2 <- song_sentiment %>%
+  mutate(track_join = str_to_lower(track_name))
+
+spotify_two2 <- spotify_two %>%
+  mutate(track_join = str_to_lower(track_name))
+
+song_sentiment_spotify <- song_sentiment2 %>%
+  inner_join(spotify_two2,
+             by = c("album_name", "track_join"))
+
+glimpse(song_sentiment_spotify)
+```
+
+```{r}
+sent_vs_dance <- ggplot(song_sentiment_spotify, aes(x = danceability, y = net_sentiment, color = album_name)) +
+  geom_point(size = 2, alpha = 0.7) +
+  theme_minimal() +
+  labs(
+    title = "Song Sentiment vs Danceability",
+    subtitle = "Lover vs Midnights",
+    x = "Danceability",
+    y = "Net sentiment (positive - negative)",
+    color = "Album"
+  )
+
+sent_vs_dance
+```
+
+```{r}
+sent_vs_energy <- ggplot(song_sentiment_spotify, aes(x = energy, y = net_sentiment, color = album_name)) +
+  geom_point(size = 2, alpha = 0.7) +
+  theme_minimal() +
+  labs(
+    title = "Song Sentiment vs Energy",
+    subtitle = "Lover vs Midnights",
+    x = "Energy",
+    y = "Net sentiment (positive - negative)",
+    color = "Album"
+  )
+
+sent_vs_energy
+```
+
+```{r}
+sent_vs_valence <- ggplot(song_sentiment_spotify, aes(x = valence, y = net_sentiment, color = album_name)) +
+  geom_point(size = 2, alpha = 0.7) +
+  theme_minimal() +
+  labs(
+    title = "Song Sentiment vs Valence",
+    subtitle = "Valence = musical positivity score",
+    x = "Valence",
+    y = "Net sentiment (positive - negative)",
+    color = "Album"
+  )
+
+sent_vs_valence
+```
+
+```{r}
+sent_vs_tempo <- ggplot(song_sentiment_spotify, aes(x = tempo, y= net_sentiment, color = album_name)) +
+  geom_point(size = 2, alpha = 0.7) +
+  theme_minimal() +
+  labs(
+    title = "Song Sentiment vs Tempo",
+    subtitle = "Lover vs Midnights",
+    x = "Tempo (BPM)",
+    y = "Net sentiment (positive - negative)",
+    color = "Album"
+  )
+
+sent_vs_tempo
+```
+
+```{r, fig.width=12, fig.height=16}
+library(patchwork)
+ts_dashboard <- (wc_lover + wc_midnights) /
+                sentiment_plot /
+                (sent_vs_dance + sent_vs_energy) /
+                (sent_vs_valence + sent_vs_tempo)
+
+ts_dashboard
+```
+
